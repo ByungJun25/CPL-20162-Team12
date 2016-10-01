@@ -1,4 +1,4 @@
 sceneSetups:
-- path: Assets/vr sample pac.unity
+- path: Assets/backscene.unity
   isLoaded: 1
   isActive: 1

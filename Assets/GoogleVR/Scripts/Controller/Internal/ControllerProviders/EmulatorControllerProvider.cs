@@ -155,7 +155,7 @@ namespace Gvr.Internal {
       return new Vector3(emulatorAccel.x, emulatorAccel.z, emulatorAccel.y);
     }
 
-    private void Recenter() {
+    public void Recenter() {
       lock (state) {
         // We want the current orientation to be "forward" so, we set the yaw correction
         // to undo the current rotation's yaw.

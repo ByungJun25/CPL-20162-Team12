@@ -1,0 +1,29 @@
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2008
+
+Project("{F6F1B63C-CCBF-F9FC-EF6C-0351D38C0D6B}") = "android vr", "Assembly-CSharp.csproj", "{836715AD-9F9E-5691-2BCE-734AEDA081AB}"
+EndProject
+Project("{F6F1B63C-CCBF-F9FC-EF6C-0351D38C0D6B}") = "android vr", "Assembly-CSharp-Editor.csproj", "{9A95892B-1FC3-B710-CAB6-A1C94D560C89}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{836715AD-9F9E-5691-2BCE-734AEDA081AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{836715AD-9F9E-5691-2BCE-734AEDA081AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{836715AD-9F9E-5691-2BCE-734AEDA081AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{836715AD-9F9E-5691-2BCE-734AEDA081AB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9A95892B-1FC3-B710-CAB6-A1C94D560C89}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9A95892B-1FC3-B710-CAB6-A1C94D560C89}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9A95892B-1FC3-B710-CAB6-A1C94D560C89}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9A95892B-1FC3-B710-CAB6-A1C94D560C89}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(MonoDevelopProperties) = preSolution
+		StartupItem = Assembly-CSharp.csproj
+	EndGlobalSection
+EndGlobal

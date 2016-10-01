@@ -427,10 +427,15 @@ public class GvrViewer : MonoBehaviour {
   /// Multiple invocations per frame are OK:  Subsequent calls merely yield the
   /// cached results of the first call.  To minimize latency, it should be first
   /// called later in the frame (for example, in `LateUpdate`) if possible.
+  
   public void UpdateState() {
+      Gvr.Internal.EmulatorControllerProvider provi=null;
+      provi.Recenter();
+
     if (updatedToFrame != Time.frameCount) {
       updatedToFrame = Time.frameCount;
       device.UpdateState();
+   
 
       if (device.profileChanged) {
         if (distortionCorrection != DistortionCorrectionMethod.Native
