@@ -14,14 +14,20 @@ public class Cdudpclient : MonoBehaviour {
 
     static int port = 9900;
     static string ser_add = "192.0.0.1";
-    UdpClient client = new UdpClient(port);
-    
+
+    Socket client = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+
+    static IPAddress ip = IPAddress.Parse(ser_add);
+    static IPEndPoint endPoint = new IPEndPoint(ip, port);
+
     public string lastReceivedPacket = "";
     public string allReceivedPackets = "";
 
     // start from unity3d
     void Start()
     {
+        client.Connect(endPoint);
+
         // create thread for reading UDP messages
         readThread = new Thread(new ThreadStart(ReceiveData));
         readThread.IsBackground = true;
@@ -72,7 +78,7 @@ public class Cdudpclient : MonoBehaviour {
                 IPEndPoint serverIP = new IPEndPoint(IPAddress.Parse(ser_add), port);
                 string test_message = "hello server?";
                 byte[] ii = Encoding.UTF8.GetBytes(test_message);
-                client.Send(ii, ii.Length, serverIP);
+                client.Send(ii, ii.Length, SocketFlags.None);
             }
             catch(Exception err)
             {
@@ -89,8 +95,9 @@ public class Cdudpclient : MonoBehaviour {
             try
             {
                 // receive bytes
-                IPEndPoint anyIP = new IPEndPoint(IPAddress.Any, 0);
-                byte[] data = client.Receive(ref anyIP);
+                byte[] data = new byte[1024];
+
+                int length = client.Receive(data,0,data.Length,SocketFlags.None);
 
                 // encode UTF8-coded bytes to text format
                 string text = Encoding.UTF8.GetString(data);
