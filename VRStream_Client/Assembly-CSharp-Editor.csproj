@@ -53,7 +53,9 @@
      <Compile Include="Assets\GoogleVR\Legacy\Editor\GvrMenu.cs" />
      <Compile Include="Assets\GoogleVR\Legacy\Editor\GvrViewerEditor.cs" />
      <Compile Include="Assets\GoogleVR\Legacy\Editor\StereoControllerEditor.cs" />
+     <Compile Include="Assets\JSON\Editor\JSONChecker.cs" />
      <None Include="Assets\GoogleVR\Distortion\GvrDistortion.cginc" />
+     <None Include="Assets\JSON\readme.txt" />
      <None Include="Assets\link.xml" />
      <None Include="Assets\readme_SDK.txt" />
      <None Include="Assets\GoogleVR\Legacy\Resources\UnlitTexture.shader" />
@@ -103,10 +105,6 @@
  <Reference Include="UnityEditor.WindowsStandalone.Extensions">
  <HintPath>D:/unity/Editor/Data/PlaybackEngines/windowsstandalonesupport/UnityEditor.WindowsStandalone.Extensions.dll</HintPath>
  </Reference>
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="Assembly-CSharp.csproj">
-      <Project>{85B8638B-174A-7CF7-552F-DD1D83D2F774}</Project>      <Name>Assembly-CSharp</Name>    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
