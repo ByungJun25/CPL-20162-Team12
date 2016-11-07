@@ -28,6 +28,14 @@ uint8_t *outbuf;
 
 #define WIDTH 640
 #define HEIGHT 480
+
+typedef struct VideoPacket {
+	uint8_t* data;
+	int64_t pts;
+	int64_t dts;
+	int flags;
+}VP;
+
 extern "C" __declspec(dllexport)
 int av_register_all_m(void)
 {
@@ -128,17 +136,12 @@ void avcodec_release(void)
 }
 
 
-extern "C" __declspec(dllexport)
-void swap(int *a, int *b) {
-	int tmp = *a;
-	*a = *b;
-	*b = tmp;
-}
 
 extern "C" __declspec(dllexport)
-AVPacket encode_m(unsigned char* imbuffer)
+VP* encode_m(unsigned char* imbuffer)
 {
 	AVPacket pkt;
+	VP* pkt_m;
 	static struct SwsContext *swsContext;
 
 	swsContext = sws_getContext(context->width, context->height, AV_PIX_FMT_NV21,
@@ -164,9 +167,14 @@ AVPacket encode_m(unsigned char* imbuffer)
 	frame->pts = AV_NOPTS_VALUE;
 
 	ret = avcodec_encode_video2(context, &pkt, frame, &got_output);
+	pkt_m = (VP *)malloc(sizeof(VP));
+	memcpy(pkt_m->data, pkt.data, pkt.size);
+	pkt_m->dts = pkt.dts;
+	pkt_m->pts = pkt.pts;
+	pkt_m->flags = pkt.flags;
 
 	sws_freeContext(swsContext);
 	
-	return pkt;
+	return pkt_m;
 
 }
