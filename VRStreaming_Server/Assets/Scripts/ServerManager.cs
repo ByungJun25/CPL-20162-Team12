@@ -9,6 +9,7 @@ public class ServerManager : MonoBehaviour
 {
 
     private bool[] isSeats = { true, true, true, true };
+    private string[] buttonName = { "Client", "Client", "Client", "Client" };
     private Vector3[] positions = { Vector3.zero, Vector3.zero, Vector3.zero, Vector3.zero };
     private string s_Date = System.DateTime.Now.ToString("yyyy_MM_dd");
 
@@ -18,11 +19,11 @@ public class ServerManager : MonoBehaviour
     public int MaximumLength = 100;
     string message = "";
     public int seatNum = 4;
+    public int maxClientCount = 4;
 
     public string filePath = "Assets/Resources/";
-
-    List<ClientManager> clientList;
-    bool[] clientSendMsgToggle = { false, false, false, false };
+    public string ImagePath = "Assets/Resources/";
+    public string ImageFileName = "";
 
     /*
      * Public variable. 
@@ -49,16 +50,17 @@ public class ServerManager : MonoBehaviour
      * When the event happen, all of the client object act their fucntion which send a message.
     */
     public static event Action<string> sendMessageEvent;
+    public static event Action<byte[]> sendImageEvent;
 
     /*
      * Those variables are for client object.
-     * clientName: When the client connect to server, server assign the client name using count. e.g. client[1]
      * bufferSize: This is int value for buffer in ClientManager Object. Now, it is 1000000.
      * count: This is client count. But when client disconnect, it doesn't decrease.
     */
-    string clientName = "";
     public int bufferSize = 1024;
     private int clientNumber = 0;
+    List<ClientManager> clientList;
+    bool[] clientSendMsgToggle = { false, false, false, false };
 
     /*
      * When the server open, it make a SocketManager(singleton) and run the AccessController Class and CheckSocket method.
@@ -66,6 +68,7 @@ public class ServerManager : MonoBehaviour
     void Awake()
     {
         clientList = new List<ClientManager>();
+        InitClientList(maxClientCount);
         SeatPosInit(seatNum);
         accessController = new AccessController(ipAddress, portNumber);
         socketManager = SocketManager.GetInstance;
@@ -99,20 +102,23 @@ public class ServerManager : MonoBehaviour
                 Debug.Log("Client Connect: " + clientSocket.RemoteEndPoint.ToString());
                 GameObject client = (GameObject)Instantiate(clientPrefab);
                 clientManager = client.GetComponent<ClientManager>();
-                clientList.Add(clientManager);
-                Vector3 pos = SeekSeat();
-                clientName = "Client[" + clientNumber + "]";
-                client.transform.name = clientName;
-                ClientConnected();
-                clientManager.init(clientSocket, clientName, clientNumber, bufferSize, pos);
+                ClientConnected(clientSocket, client, clientManager);
             }
             yield return waitSec;
         }
     }
 
-    private void ClientConnected()
+    private void ClientConnected(Socket clientSocket, GameObject client, ClientManager clientManager)
     {
-        string message = "Client connected: " + clientName;
+        Vector3 pos = SeekSeat();
+        clientManager.init(clientSocket, clientNumber, bufferSize, pos);
+        clientList.Insert((clientNumber - 1), clientManager);
+        if (clientList.Count > clientNumber)
+        {
+            clientList.RemoveAt(clientNumber);
+        }
+        buttonName[(clientNumber-1)] = clientManager.GetClientName()+"(Off)";
+        string message = "Client connected: " + clientManager.GetClientName();
         AddMessageOnHistory(message);
     }
 
@@ -121,13 +127,9 @@ public class ServerManager : MonoBehaviour
         string message = "Client disconnected: " + clientName;
         AddMessageOnHistory(message);
         ReturnSeat(clientNumber);
-        for(int i = 0; i< clientList.Count; i++)
-        {
-            if(clientList[i].GetClientName() == clientName)
-            {
-                clientList.RemoveAt(i);
-            }
-        }
+        clientList[clientNumber - 1] = null;
+        buttonName[clientNumber - 1] = "Client";
+        clientSendMsgToggle[clientNumber - 1] = false;
     }
 
     /*
@@ -137,56 +139,72 @@ public class ServerManager : MonoBehaviour
     */
     private void SendMessageToClient()
     {
-        if (GUI.Button(new Rect(Screen.width - (Screen.width * 0.99f), Screen.height - (Screen.height * 0.97f), 70, 20), "Client[1]"))
+        if (GUI.Button(new Rect(Screen.width - (Screen.width * 0.99f), Screen.height - (Screen.height * 0.97f), (Screen.width * 0.1f), (Screen.height * 0.03f)), buttonName[0]))
         {
             if (clientList[0] != null && !clientSendMsgToggle[0])
             {
                 clientList[0].OnEnableSendMessage();
+                clientList[0].OnEnableSendImage();
                 clientSendMsgToggle[0] = !clientSendMsgToggle[0];
+                buttonName[0] = clientList[0].GetClientName() + "(On)";
             }
             else if(clientList[0] != null && clientSendMsgToggle[0])
             {
                 clientList[0].OnDisableSendMessage();
+                clientList[0].OnDisableSendImage();
                 clientSendMsgToggle[0] = !clientSendMsgToggle[0];
+                buttonName[0] = clientList[0].GetClientName() + "(Off)";
             }
         }
-        if (GUI.Button(new Rect(Screen.width - (Screen.width * 0.638f), Screen.height - (Screen.height * 0.97f), 70, 20), "Client[2]"))
+        if (GUI.Button(new Rect(Screen.width - (Screen.width * 0.638f), Screen.height - (Screen.height * 0.97f), (Screen.width * 0.1f), (Screen.height * 0.03f)), buttonName[1]))
         {
             if (clientList[1] != null && !clientSendMsgToggle[1])
             {
                 clientList[1].OnEnableSendMessage();
+                clientList[1].OnEnableSendImage();
                 clientSendMsgToggle[1] = !clientSendMsgToggle[1];
+                buttonName[1] = clientList[1].GetClientName() + "(On)";
             }
             else if (clientList[1] != null && clientSendMsgToggle[1])
             {
                 clientList[1].OnDisableSendMessage();
+                clientList[1].OnDisableSendImage();
                 clientSendMsgToggle[1] = !clientSendMsgToggle[1];
+                buttonName[1] = clientList[1].GetClientName() + "(Off)";
             }
         }
-        if (GUI.Button(new Rect(Screen.width - (Screen.width * 0.99f), Screen.height - (Screen.height * 0.470f), 70, 20), "Client[3]"))
+        if (GUI.Button(new Rect(Screen.width - (Screen.width * 0.99f), Screen.height - (Screen.height * 0.470f), (Screen.width * 0.1f), (Screen.height * 0.03f)), buttonName[2]))
         {
             if (clientList[2] != null && !clientSendMsgToggle[2])
             {
                 clientList[2].OnEnableSendMessage();
+                clientList[2].OnEnableSendImage();
                 clientSendMsgToggle[2] = !clientSendMsgToggle[2];
+                buttonName[2] = clientList[2].GetClientName() + "(On)";
             }
             else if (clientList[2] != null && clientSendMsgToggle[2])
             {
                 clientList[2].OnDisableSendMessage();
+                clientList[2].OnDisableSendImage();
                 clientSendMsgToggle[2] = !clientSendMsgToggle[2];
+                buttonName[2] = clientList[2].GetClientName() + "(Off)";
             }
         }
-        if (GUI.Button(new Rect(Screen.width - (Screen.width * 0.638f), Screen.height - (Screen.height * 0.470f), 70, 20), "Client[4]"))
+        if (GUI.Button(new Rect(Screen.width - (Screen.width * 0.638f), Screen.height - (Screen.height * 0.470f), (Screen.width * 0.1f), (Screen.height * 0.03f)), buttonName[3]))
         {
             if (clientList[3] != null && !clientSendMsgToggle[3])
             {
                 clientList[3].OnEnableSendMessage();
+                clientList[3].OnEnableSendImage();
                 clientSendMsgToggle[3] = !clientSendMsgToggle[3];
+                buttonName[3] = clientList[3].GetClientName() + "(On)";
             }
             else if (clientList[3] != null && clientSendMsgToggle[3])
             {
                 clientList[3].OnDisableSendMessage();
+                clientList[3].OnDisableSendImage();
                 clientSendMsgToggle[3] = !clientSendMsgToggle[3];
+                buttonName[3] = clientList[3].GetClientName() + "(Off)";
             }
         }
 
@@ -211,93 +229,179 @@ public class ServerManager : MonoBehaviour
         }
         else if (GUI.Button(new Rect(Screen.width - (Screen.width * 0.09f), Screen.height - (Screen.height * 0.97f), (Screen.width * 0.08f), (Screen.height * 0.16f)), "Ring\nAlarm"))
         {
-            message = "Click Send Alert Button";
+            message = "Send Alert";
             SendAlertMsg(message);
         }
         else if (GUI.Button(new Rect(Screen.width - (Screen.width * 0.09f), Screen.height - (Screen.height * 0.79f), (Screen.width * 0.08f), (Screen.height * 0.16f)), "Vibrate\nAlarm"))
         {
-            message = "Click Send Alarm Button";
+            message = "Send Alarm";
             SendAlarmMsg(message);
         }
         else if (GUI.Button(new Rect(Screen.width - (Screen.width * 0.09f), Screen.height - (Screen.height * 0.62f), (Screen.width * 0.08f), (Screen.height * 0.16f)), "Send\nImage"))
         {
-            message = "Click Send Image Button";
+            message = "Send Image";
             SendImage(message);
         }
-        else if (GUI.Button(new Rect(Screen.width - (Screen.width * 0.09f), Screen.height - (Screen.height * 0.44f), (Screen.width * 0.08f), (Screen.height * 0.16f)), "Record\nVideo\n(5 seconds)"))
+        else if (GUI.Button(new Rect(Screen.width - (Screen.width * 0.09f), Screen.height - (Screen.height * 0.44f), (Screen.width * 0.08f), (Screen.height * 0.16f)), "Send\nMacro\nMessage"))
         {
-            message = "Click Record Video Button";
-            SaveVideo(message);
+            message = "Send Escape";
+            SendMacroMessage(message);
         }
         else if (GUI.Button(new Rect(Screen.width - (Screen.width * 0.09f), Screen.height - (Screen.height * 0.27f), (Screen.width * 0.08f), (Screen.height * 0.16f)), "Exit\nEmergency"))
         {
-            message = "Click Exit Emergency Button";
+            message = "Send Exit Emergency statement";
             SendExitEmergencyMsg(message);
         }
     }
 
     private void SendMessage()
     {
+        string msg = "";
         if (!string.IsNullOrEmpty(currentMessage.Trim()))
         {
             if (sendMessageEvent != null)
             {
                 sendMessageEvent(currentMessage);
+                for(int i=0; i<clientSendMsgToggle.Length; i++)
+                {
+                    if(clientSendMsgToggle[i])
+                    {
+                        msg = "[" + clientList[i].GetClientName() + "] ";
+                        msg += currentMessage;
+                        AddMessageOnHistory(msg);
+                    }
+                }
             }
-            AddMessageOnHistory(currentMessage);
+            else
+            {
+                AddMessageOnHistory("No people selected.");
+            }
             currentMessage = string.Empty;
         }
     }
 
     private void SendAlertMsg(string message)
     {
+        string msg = "";
         if (!string.IsNullOrEmpty(message.Trim()))
         {
             if (sendMessageEvent != null)
             {
                 sendMessageEvent("alert");
+                for (int i = 0; i < clientSendMsgToggle.Length; i++)
+                {
+                    if (clientSendMsgToggle[i])
+                    {
+                        msg = "[" + clientList[i].GetClientName() + "] ";
+                        msg += message;
+                        AddMessageOnHistory(msg);
+                    }
+                }
             }
-            AddMessageOnHistory(message);
+            else
+            {
+                AddMessageOnHistory("No people selected.");
+            }
         }
     }
 
     private void SendAlarmMsg(string message)
     {
+        string msg = "";
         if (!string.IsNullOrEmpty(message.Trim()))
         {
             if (sendMessageEvent != null)
             {
                 sendMessageEvent("vibrate");
+                for (int i = 0; i < clientSendMsgToggle.Length; i++)
+                {
+                    if (clientSendMsgToggle[i])
+                    {
+                        msg = "[" + clientList[i].GetClientName() + "] ";
+                        msg += message;
+                        AddMessageOnHistory(msg);
+                    }
+                }
             }
-            AddMessageOnHistory(message);
+            else
+            {
+                AddMessageOnHistory("No people selected.");
+            }
         }
     }
 
     private void SendImage(string message)
     {
-        if (!string.IsNullOrEmpty(message.Trim()))
+        string msg = "";
+        byte[] imageDate = ReadData(ImagePath, ImageFileName);
+        if (sendImageEvent != null)
         {
-            AddMessageOnHistory(message);
+            sendImageEvent(imageDate);
+            for (int i = 0; i < clientSendMsgToggle.Length; i++)
+            {
+                if (clientSendMsgToggle[i])
+                {
+                    msg = "[" + clientList[i].GetClientName() + "] ";
+                    msg += message;
+                    AddMessageOnHistory(msg);
+                }
+            }
+        }
+        else
+        {
+            AddMessageOnHistory("No people selected.");
         }
     }
 
-    private void SaveVideo(string message)
+    private void SendMacroMessage(string message)
     {
+        string macro = "당장 탈출하라!";
+        string msg = "";
         if (!string.IsNullOrEmpty(message.Trim()))
         {
-            AddMessageOnHistory(message);
+            if (sendMessageEvent != null)
+            {
+                sendMessageEvent(macro);
+                for (int i = 0; i < clientSendMsgToggle.Length; i++)
+                {
+                    if (clientSendMsgToggle[i])
+                    {
+                        msg = "[" + clientList[i].GetClientName() + "] ";
+                        msg += message;
+                        AddMessageOnHistory(msg);
+                    }
+                }
+            }
+            else
+            {
+                AddMessageOnHistory("No people selected.");
+            }
+            currentMessage = string.Empty;
         }
     }
 
     private void SendExitEmergencyMsg(string message)
     {
+        string msg = "";
         if (!string.IsNullOrEmpty(message.Trim()))
         {
             if (sendMessageEvent != null)
             {
                 sendMessageEvent("exit");
+                for (int i = 0; i < clientSendMsgToggle.Length; i++)
+                {
+                    if (clientSendMsgToggle[i])
+                    {
+                        msg = "[" + clientList[i].GetClientName() + "] ";
+                        msg += message;
+                        AddMessageOnHistory(msg);
+                    }
+                }
             }
-            AddMessageOnHistory(message);
+            else
+            {
+                AddMessageOnHistory("No people selected.");
+            }
         }
     }
 
@@ -352,9 +456,18 @@ public class ServerManager : MonoBehaviour
         writer.Close();
     }
 
-    private void initGUIBUttonStyle()
+    private void InitClientList(int clientCount)
     {
-        GUIStyle buttonStyle = new GUIStyle(GUI.skin.button);
-        
+        for(int i =0; i< clientCount; i++)
+        {
+            clientList.Add(null);
+        }
+    }
+
+    private byte[] ReadData(string path ,string fileName)
+    {
+        string filePath = path + fileName;
+        byte[] fileData = File.ReadAllBytes(filePath);
+        return fileData;
     }
 }

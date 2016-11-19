@@ -26,14 +26,31 @@ public class ClientManager : MonoBehaviour
      * Run the coroutine method after initialize.
      * coroutine method name is ReceiveVideo.
     */
-    public void init(Socket clientSocket, string clientName, int clientNumber, int bufferSize, Vector3 position)
+    public void init(Socket clientSocket, int clientNumber, int bufferSize, Vector3 position)
     {
         Debug.Log("Client prefab initialize");
+        buffer = new byte[bufferSize];
         this.clientSocket = clientSocket;
-        this.clientName = clientName;
+        int recv_len = clientSocket.Receive(buffer);
+        if (recv_len <= 0)
+        {
+            Debug.Log("fail to get client name");
+            return;
+        }
+        else
+        {
+            this.clientName = Encoding.Default.GetString(buffer);
+            this.clientName = this.clientName.Replace("\0", String.Empty);
+            Array.Clear(buffer, 0, buffer.Length);
+        }
+        if(!string.IsNullOrEmpty(this.clientName.Trim()))
+        {
+            byte[] b_message = Encoding.UTF8.GetBytes("Start");
+            clientSocket.Send(b_message);
+        }
+
         this.clientNumber = clientNumber;
         this.transform.position = position;
-        buffer = new byte[bufferSize];
         clientSocket.NoDelay = true;
         clientSocket.ReceiveTimeout = 5000;
 
@@ -70,6 +87,7 @@ public class ClientManager : MonoBehaviour
                     clientSocket = null;
                     Disconnected(clientNumber, clientName);
                     OnDisableSendMessage();
+                    OnDisableSendImage();
                     Destroy(this.gameObject);
                 }
                 else
@@ -109,11 +127,12 @@ public class ClientManager : MonoBehaviour
             catch (Exception e)
             {
                 Debug.Log(e);
-                clientSocket.Close();
-                clientSocket = null;
                 Disconnected(clientNumber, clientName);
                 OnDisableSendMessage();
+                OnDisableSendImage();
                 Destroy(this.gameObject);
+                clientSocket.Close();
+                clientSocket = null;
             }
             yield return new WaitForSecondsRealtime(0.05f);
         }
@@ -143,6 +162,16 @@ public class ClientManager : MonoBehaviour
         ServerManager.sendMessageEvent -= SendMessageToClient;
     }
 
+    public void OnEnableSendImage()
+    {
+        ServerManager.sendImageEvent += sendImageToClient;
+    }
+
+    public void OnDisableSendImage()
+    {
+        ServerManager.sendImageEvent -= sendImageToClient;
+    }
+
     /*
      * This method send a message from server to client.
     */
@@ -150,6 +179,30 @@ public class ClientManager : MonoBehaviour
     {
         byte[] b_message = Encoding.UTF8.GetBytes(message);
         clientSocket.Send(b_message);
+    }
+
+    private void sendImageToClient(byte[] data)
+    {
+        string msg = "Image";
+        byte[] b_message = Encoding.UTF8.GetBytes(msg);
+        clientSocket.Send(b_message);
+
+        byte[] imageHeader = new byte[4];
+
+        int image_length = data.Length;
+
+        imageHeader[0] = (byte)(image_length);
+        imageHeader[1] = (byte)(image_length >> 8);
+        imageHeader[2] = (byte)(image_length >> 16);
+        imageHeader[3] = (byte)(image_length >> 24);
+        clientSocket.Send(imageHeader);
+        int data_len = BitConverter.ToInt32(imageHeader, 0);
+
+        int imageDate_Len = image_length + 4;
+        byte[] imageDate = new byte[imageDate_Len];
+        Buffer.BlockCopy(imageHeader, 0, imageDate, 0, 4);
+        Buffer.BlockCopy(data, 0, imageDate, 4, imageHeader.Length);
+        clientSocket.Send(data);
     }
 
     public string GetClientName()
