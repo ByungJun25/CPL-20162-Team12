@@ -7,7 +7,6 @@ using System.Net.Sockets;
 
 public class ServerManager : MonoBehaviour
 {
-
     private bool[] isSeats = { true, true, true, true };
     private string[] buttonName = { "Client", "Client", "Client", "Client" };
     private Vector3[] positions = { Vector3.zero, Vector3.zero, Vector3.zero, Vector3.zero };
@@ -19,7 +18,6 @@ public class ServerManager : MonoBehaviour
     public int MaximumLength = 100;
     string message = "";
     public int seatNum = 4;
-    public int maxClientCount = 4;
 
     public string filePath = "Assets/Resources/";
     public string ImagePath = "Assets/Resources/";
@@ -51,6 +49,7 @@ public class ServerManager : MonoBehaviour
     */
     public static event Action<string> sendMessageEvent;
     public static event Action<byte[]> sendImageEvent;
+    public static event Action sendWaitingMessageEvent;
 
     /*
      * Those variables are for client object.
@@ -59,16 +58,14 @@ public class ServerManager : MonoBehaviour
     */
     public int bufferSize = 1024;
     private int clientNumber = 0;
-    List<ClientManager> clientList;
+    ClientManager[] clientList = { null, null, null, null};
     bool[] clientSendMsgToggle = { false, false, false, false };
-
+     
     /*
      * When the server open, it make a SocketManager(singleton) and run the AccessController Class and CheckSocket method.
     */
-    void Awake()
+    void Start()
     {
-        clientList = new List<ClientManager>();
-        InitClientList(maxClientCount);
         SeatPosInit(seatNum);
         accessController = new AccessController(ipAddress, portNumber);
         socketManager = SocketManager.GetInstance;
@@ -99,24 +96,30 @@ public class ServerManager : MonoBehaviour
 
             if (clientSocket != null)
             {
-                Debug.Log("Client Connect: " + clientSocket.RemoteEndPoint.ToString());
-                GameObject client = (GameObject)Instantiate(clientPrefab);
-                clientManager = client.GetComponent<ClientManager>();
-                ClientConnected(clientSocket, client, clientManager);
+                StartCoroutine(CreateClientScreen(clientSocket));
             }
             yield return waitSec;
         }
     }
 
-    private void ClientConnected(Socket clientSocket, GameObject client, ClientManager clientManager)
+    IEnumerator CreateClientScreen(Socket clientSocket)
+    {
+        Debug.Log("Client Connect: " + clientSocket.RemoteEndPoint.ToString());
+        GameObject client = Instantiate(clientPrefab);
+        clientManager = client.GetComponent<ClientManager>();
+        ClientConnected(clientSocket, clientManager);
+        yield return null;
+    }
+
+    private void ClientConnected(Socket clientSocket, ClientManager clientManager)
     {
         Vector3 pos = SeekSeat();
         clientManager.init(clientSocket, clientNumber, bufferSize, pos);
-        clientList.Insert((clientNumber - 1), clientManager);
-        if (clientList.Count > clientNumber)
+        if (sendWaitingMessageEvent != null)
         {
-            clientList.RemoveAt(clientNumber);
+            sendWaitingMessageEvent();
         }
+        clientList[clientNumber-1] = clientManager;
         buttonName[(clientNumber-1)] = clientManager.GetClientName()+"(Off)";
         string message = "Client connected: " + clientManager.GetClientName();
         AddMessageOnHistory(message);
@@ -454,14 +457,6 @@ public class ServerManager : MonoBehaviour
             writer.WriteLine(message);
         }
         writer.Close();
-    }
-
-    private void InitClientList(int clientCount)
-    {
-        for(int i =0; i< clientCount; i++)
-        {
-            clientList.Add(null);
-        }
     }
 
     private byte[] ReadData(string path ,string fileName)

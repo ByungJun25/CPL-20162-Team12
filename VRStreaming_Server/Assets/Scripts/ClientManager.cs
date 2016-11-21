@@ -14,7 +14,7 @@ public class ClientManager : MonoBehaviour
     */
     private Socket clientSocket;
     private byte[] buffer = null;
-    private string clientName;
+    private string clientName ="";
     private int clientNumber;
     private int bytesRec = 0;
 
@@ -31,6 +31,7 @@ public class ClientManager : MonoBehaviour
         Debug.Log("Client prefab initialize");
         buffer = new byte[bufferSize];
         this.clientSocket = clientSocket;
+        /*
         int recv_len = clientSocket.Receive(buffer);
         if (recv_len <= 0)
         {
@@ -48,13 +49,39 @@ public class ClientManager : MonoBehaviour
             byte[] b_message = Encoding.UTF8.GetBytes("Start");
             clientSocket.Send(b_message);
         }
-
+        */
         this.clientNumber = clientNumber;
         this.transform.position = position;
         clientSocket.NoDelay = true;
         clientSocket.ReceiveTimeout = 5000;
 
+        ServerManager.sendWaitingMessageEvent += sendWaitingMessage;
+
+        int recv_len = clientSocket.Receive(buffer);
+        if (recv_len <= 0)
+        {
+            Debug.Log("fail to get client name");
+            return;
+        }
+        else
+        {
+            this.clientName = Encoding.Default.GetString(buffer);
+            this.clientName = this.clientName.Replace("\0", String.Empty);
+            Array.Clear(buffer, 0, buffer.Length);
+        }
+        if (!string.IsNullOrEmpty(this.clientName.Trim()))
+        {
+            byte[] b_message = Encoding.UTF8.GetBytes("Start");
+            clientSocket.Send(b_message);
+        }
+
         StartCoroutine(ReceiveVideo());
+    }
+
+    private void sendWaitingMessage()
+    {
+        byte[] b_message = Encoding.UTF8.GetBytes("onesecond");
+        clientSocket.Send(b_message);
     }
 
     /*
@@ -69,7 +96,6 @@ public class ClientManager : MonoBehaviour
 
         int data_len = 0;
         int offset = 0;
-
         byte[] frame = {0};
         byte[] header = { 0, 0, 0, 0 };
 
@@ -88,6 +114,7 @@ public class ClientManager : MonoBehaviour
                     Disconnected(clientNumber, clientName);
                     OnDisableSendMessage();
                     OnDisableSendImage();
+                    ServerManager.sendWaitingMessageEvent -= sendWaitingMessage;
                     Destroy(this.gameObject);
                 }
                 else
@@ -115,7 +142,7 @@ public class ClientManager : MonoBehaviour
                         {
                             Array.Resize<byte>(ref frame, data_len);
                             Buffer.BlockCopy(buffer, 0, frame, 0, data_len);
-                            ShowVideo(frame);
+                            StartCoroutine(ShowVideo(frame));
                             Array.Clear(frame, 0, frame.Length);
                             offset -= data_len;
                             Buffer.BlockCopy(buffer, data_len, buffer, 0, offset);
@@ -130,22 +157,34 @@ public class ClientManager : MonoBehaviour
                 Disconnected(clientNumber, clientName);
                 OnDisableSendMessage();
                 OnDisableSendImage();
+                ServerManager.sendWaitingMessageEvent -= sendWaitingMessage;
                 Destroy(this.gameObject);
                 clientSocket.Close();
                 clientSocket = null;
             }
-            yield return new WaitForSecondsRealtime(0.05f);
+            yield return null;
         }
     }
 
-    private void ShowVideo(byte[] frame)
+    IEnumerator ShowVideo(byte[] frame)
     {
+        //Debug.Log(frame.Length);
         Texture2D tex = new Texture2D(640, 360);
         tex.LoadImage(frame);
         GetComponent<Renderer>().material.mainTexture = tex;
-        tex.Apply();
+        //tex.Apply();
+        yield return null;
     }
-
+    /*
+    private void ShowVideo(byte[] frame)
+    {
+        Debug.Log(frame.Length);
+        Texture2D tex = new Texture2D(640, 360);
+        tex.LoadImage(frame);
+        GetComponent<Renderer>().material.mainTexture = tex;
+        //tex.Apply();
+    }
+    */
     /*
      * Put the SendMessageToClient method in sendMessageEvent event.
     */
@@ -196,7 +235,6 @@ public class ClientManager : MonoBehaviour
         imageHeader[2] = (byte)(image_length >> 16);
         imageHeader[3] = (byte)(image_length >> 24);
         clientSocket.Send(imageHeader);
-        int data_len = BitConverter.ToInt32(imageHeader, 0);
 
         int imageDate_Len = image_length + 4;
         byte[] imageDate = new byte[imageDate_Len];
